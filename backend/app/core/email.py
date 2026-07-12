@@ -11,10 +11,10 @@ def send_email(to_email: str, subject: str, body_html: str) -> bool:
         print("⚠️  SMTP credentials not configured — skipping email send.")
         return False
     
-    print("I am here")
+    from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = settings.SMTP_FROM_EMAIL
+    msg["From"] = from_email
     msg["To"] = to_email
     msg.attach(MIMEText(body_html, "html"))
 
@@ -22,7 +22,7 @@ def send_email(to_email: str, subject: str, body_html: str) -> bool:
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
             server.starttls()
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
+            server.sendmail(from_email, to_email, msg.as_string())
         print(f"✅ Email sent to {to_email}")
         return True
     except Exception as e:
