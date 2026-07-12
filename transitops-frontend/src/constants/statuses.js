@@ -4,7 +4,10 @@
  *   VehicleStatus     → app/models/vehicle.py
  *   DriverStatus      → app/models/driver.py
  *   TripStatus        → app/models/trip.py
- *   MaintenanceStatus → app/models/maintenance.py
+ *   MaintenanceStatus → app/models/maintenance.py  (active | closed)
+ *   MaintenanceType   → app/models/maintenance.py  (oil_change | brake_service | ...)
+ *   ExpenseType       → app/models/fuel_expense.py (toll | repair | maintenance | other)
+ *   VehicleType       → app/models/vehicle.py      (truck | van | mini_truck | trailer | bike)
  *
  * Each status resolves to a { label, color, dotColor } shape consumed by the
  * shared <StatusChip /> component, so adding a new status anywhere only requires
@@ -29,18 +32,21 @@ export const VEHICLE_STATUS_META = {
   [VEHICLE_STATUS.RETIRED]: { label: "Retired", color: "muted" },
 };
 
+// Matches backend VehicleType: truck | van | mini_truck | trailer | bike
 export const VEHICLE_TYPES = {
-  VAN: "van",
   TRUCK: "truck",
-  BUS: "bus",
-  PICKUP: "pickup",
+  VAN: "van",
+  MINI_TRUCK: "mini_truck",
+  TRAILER: "trailer",
+  BIKE: "bike",
 };
 
 export const VEHICLE_TYPE_META = {
-  [VEHICLE_TYPES.VAN]: { label: "Van", icon: "Truck" },
   [VEHICLE_TYPES.TRUCK]: { label: "Truck", icon: "Truck" },
-  [VEHICLE_TYPES.BUS]: { label: "Bus", icon: "Bus" },
-  [VEHICLE_TYPES.PICKUP]: { label: "Pickup", icon: "Truck" },
+  [VEHICLE_TYPES.VAN]: { label: "Van", icon: "Truck" },
+  [VEHICLE_TYPES.MINI_TRUCK]: { label: "Mini Truck", icon: "Truck" },
+  [VEHICLE_TYPES.TRAILER]: { label: "Trailer", icon: "Truck" },
+  [VEHICLE_TYPES.BIKE]: { label: "Bike", icon: "Bike" },
 };
 
 // ---- Driver ----
@@ -81,46 +87,49 @@ export const TRIP_LIFECYCLE_ORDER = [
 ];
 
 // ---- Maintenance ----
+// Backend MaintenanceStatus: active | closed  (only 2 states)
 export const MAINTENANCE_STATUS = {
-  OPEN: "open",
-  IN_PROGRESS: "in_progress",
+  ACTIVE: "active",
   CLOSED: "closed",
 };
 
 export const MAINTENANCE_STATUS_META = {
-  [MAINTENANCE_STATUS.OPEN]: { label: "Open", color: "warning" },
-  [MAINTENANCE_STATUS.IN_PROGRESS]: { label: "In Progress", color: "info" },
+  [MAINTENANCE_STATUS.ACTIVE]: { label: "Active", color: "warning" },
   [MAINTENANCE_STATUS.CLOSED]: { label: "Closed", color: "success" },
 };
 
+// Backend MaintenanceType: oil_change | brake_service | tyre_replacement | general_service | repair | other
 export const MAINTENANCE_TYPES = {
-  ROUTINE: "routine",
+  OIL_CHANGE: "oil_change",
+  BRAKE_SERVICE: "brake_service",
+  TYRE_REPLACEMENT: "tyre_replacement",
+  GENERAL_SERVICE: "general_service",
   REPAIR: "repair",
-  INSPECTION: "inspection",
-  EMERGENCY: "emergency",
+  OTHER: "other",
 };
 
 export const MAINTENANCE_TYPE_META = {
-  [MAINTENANCE_TYPES.ROUTINE]: { label: "Routine Service", color: "info" },
-  [MAINTENANCE_TYPES.REPAIR]: { label: "Repair", color: "warning" },
-  [MAINTENANCE_TYPES.INSPECTION]: { label: "Inspection", color: "muted" },
-  [MAINTENANCE_TYPES.EMERGENCY]: { label: "Emergency", color: "danger" },
+  [MAINTENANCE_TYPES.OIL_CHANGE]: { label: "Oil Change", color: "info" },
+  [MAINTENANCE_TYPES.BRAKE_SERVICE]: { label: "Brake Service", color: "warning" },
+  [MAINTENANCE_TYPES.TYRE_REPLACEMENT]: { label: "Tyre Replacement", color: "warning" },
+  [MAINTENANCE_TYPES.GENERAL_SERVICE]: { label: "General Service", color: "info" },
+  [MAINTENANCE_TYPES.REPAIR]: { label: "Repair", color: "danger" },
+  [MAINTENANCE_TYPES.OTHER]: { label: "Other", color: "muted" },
 };
 
 // ---- Expense ----
+// Backend ExpenseType: toll | repair | maintenance | other
 export const EXPENSE_TYPES = {
   TOLL: "toll",
-  PARKING: "parking",
-  FINE: "fine",
   REPAIR: "repair",
+  MAINTENANCE: "maintenance",
   OTHER: "other",
 };
 
 export const EXPENSE_TYPE_META = {
   [EXPENSE_TYPES.TOLL]: { label: "Toll", color: "info" },
-  [EXPENSE_TYPES.PARKING]: { label: "Parking", color: "muted" },
-  [EXPENSE_TYPES.FINE]: { label: "Fine", color: "danger" },
   [EXPENSE_TYPES.REPAIR]: { label: "Repair", color: "warning" },
+  [EXPENSE_TYPES.MAINTENANCE]: { label: "Maintenance", color: "danger" },
   [EXPENSE_TYPES.OTHER]: { label: "Other", color: "muted" },
 };
 

@@ -38,6 +38,7 @@ import {
   MAINTENANCE_STATUS,
   MAINTENANCE_STATUS_META,
   MAINTENANCE_TYPES,
+  MAINTENANCE_TYPE_META,
   getStatusMeta,
 } from '../../constants/statuses';
 import StatusChip from '../../components/shared/StatusChip';
@@ -48,45 +49,43 @@ import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../utils/cn';
 
 /* ─────────────────────────────────────────────────────────────────────────── *
- * CONSTANTS
+ * CONSTANTS — aligned with backend MaintenanceStatus (active | closed)
+ * and MaintenanceType (oil_change | brake_service | tyre_replacement | general_service | repair | other)
  * ─────────────────────────────────────────────────────────────────────────── */
 
+// Backend has only 2 lifecycle states: active → closed
 const LIFECYCLE = [
-  MAINTENANCE_STATUS.OPEN,
-  MAINTENANCE_STATUS.IN_PROGRESS,
+  MAINTENANCE_STATUS.ACTIVE,
   MAINTENANCE_STATUS.CLOSED,
 ];
 
 const TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
-  { value: MAINTENANCE_TYPES.ROUTINE, label: 'Routine Service' },
+  { value: MAINTENANCE_TYPES.OIL_CHANGE, label: 'Oil Change' },
+  { value: MAINTENANCE_TYPES.BRAKE_SERVICE, label: 'Brake Service' },
+  { value: MAINTENANCE_TYPES.TYRE_REPLACEMENT, label: 'Tyre Replacement' },
+  { value: MAINTENANCE_TYPES.GENERAL_SERVICE, label: 'General Service' },
   { value: MAINTENANCE_TYPES.REPAIR, label: 'Repair' },
-  { value: MAINTENANCE_TYPES.INSPECTION, label: 'Inspection' },
-  { value: MAINTENANCE_TYPES.EMERGENCY, label: 'Emergency' },
+  { value: MAINTENANCE_TYPES.OTHER, label: 'Other' },
 ];
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: MAINTENANCE_STATUS.OPEN, label: 'Open' },
-  { value: MAINTENANCE_STATUS.IN_PROGRESS, label: 'In Progress' },
+  { value: MAINTENANCE_STATUS.ACTIVE, label: 'Active' },
   { value: MAINTENANCE_STATUS.CLOSED, label: 'Closed' },
 ];
 
 const MAINTENANCE_TYPE_FORM_OPTIONS = [
-  { value: MAINTENANCE_TYPES.ROUTINE, label: 'Routine Service' },
+  { value: MAINTENANCE_TYPES.OIL_CHANGE, label: 'Oil Change' },
+  { value: MAINTENANCE_TYPES.BRAKE_SERVICE, label: 'Brake Service' },
+  { value: MAINTENANCE_TYPES.TYRE_REPLACEMENT, label: 'Tyre Replacement' },
+  { value: MAINTENANCE_TYPES.GENERAL_SERVICE, label: 'General Service' },
   { value: MAINTENANCE_TYPES.REPAIR, label: 'Repair' },
-  { value: MAINTENANCE_TYPES.INSPECTION, label: 'Inspection' },
-  { value: MAINTENANCE_TYPES.EMERGENCY, label: 'Emergency' },
-];
-
-const STATUS_UPDATE_OPTIONS = [
-  { value: MAINTENANCE_STATUS.OPEN, label: 'Open' },
-  { value: MAINTENANCE_STATUS.IN_PROGRESS, label: 'In Progress' },
+  { value: MAINTENANCE_TYPES.OTHER, label: 'Other' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── *
  * COLOR HELPERS
- * Maps semantic color key → Tailwind utility classes
  * ─────────────────────────────────────────────────────────────────────────── */
 
 const COLOR_CLASSES = {
@@ -155,14 +154,13 @@ function KpiCard({ label, value, icon: Icon, color = 'muted', subtitle }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── *
- * LIFECYCLE STEPPER  (Open → In Progress → Closed)
- * Mirrors TripDetails stepper pattern for visual consistency across pages.
+ * LIFECYCLE STEPPER  (Active → Closed)
  * ─────────────────────────────────────────────────────────────────────────── */
 
 function LifecycleStepper({ status }) {
   const currentIdx = LIFECYCLE.indexOf(status);
   return (
-    <div className="flex items-center gap-0 w-full">
+    <div className="flex items-center gap-0 w-full max-w-xs">
       {LIFECYCLE.map((s, idx) => {
         const meta = MAINTENANCE_STATUS_META[s];
         const c = COLOR_CLASSES[meta?.color] ?? COLOR_CLASSES.muted;
@@ -213,17 +211,12 @@ function LifecycleStepper({ status }) {
 
 /* ─────────────────────────────────────────────────────────────────────────── *
  * EXPANDED ROW DETAIL PANEL
- * Slides in below the row (height animation). Shows:
- *   - lifecycle stepper
- *   - cost / date / odometer grid
- *   - notes block
- *   - Update + Close Job actions (write-role only, active jobs only)
  * ─────────────────────────────────────────────────────────────────────────── */
 
 function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
   const vehicle = vehicleMap[record.vehicle_id];
   const c = colorFor(record.status);
-  const isActive = record.status !== MAINTENANCE_STATUS.CLOSED;
+  const isActive = record.status === MAINTENANCE_STATUS.ACTIVE;
   const typeMeta = getStatusMeta('maintenanceType', record.maintenance_type);
 
   return (
@@ -254,10 +247,12 @@ function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
               {vehicle && (
                 <p className="text-sm text-zinc-400 mt-0.5">
                   Vehicle:{' '}
-                  <span className="text-zinc-200 font-medium">{vehicle.license_plate}</span>
-                  {vehicle.make && (
+                  <span className="text-zinc-200 font-medium">
+                    {vehicle.registration_number}
+                  </span>
+                  {vehicle.name && (
                     <span className="text-zinc-500 ml-1.5">
-                      ({vehicle.make} {vehicle.model})
+                      ({vehicle.name}{vehicle.model ? ` ${vehicle.model}` : ''})
                     </span>
                   )}
                 </p>
@@ -297,18 +292,18 @@ function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
           </div>
 
           {/* Cost + dates grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               {
-                label: 'Scheduled',
-                value: record.scheduled_date
-                  ? new Date(record.scheduled_date).toLocaleDateString()
+                label: 'Started',
+                value: record.started_at
+                  ? new Date(record.started_at).toLocaleDateString()
                   : '—',
               },
               {
-                label: 'Completed',
-                value: record.completed_date
-                  ? new Date(record.completed_date).toLocaleDateString()
+                label: 'Closed',
+                value: record.closed_at
+                  ? new Date(record.closed_at).toLocaleDateString()
                   : '—',
               },
               {
@@ -316,13 +311,6 @@ function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
                 value:
                   record.cost != null
                     ? `$${Number(record.cost).toFixed(2)}`
-                    : '—',
-              },
-              {
-                label: 'Odometer',
-                value:
-                  record.odometer_reading != null
-                    ? `${Number(record.odometer_reading).toLocaleString()} km`
                     : '—',
               },
             ].map(({ label, value }) => (
@@ -333,13 +321,13 @@ function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
             ))}
           </div>
 
-          {/* Notes */}
-          {record.notes && (
+          {/* Description */}
+          {record.description && (
             <div className="bg-surface-700/40 rounded-xl px-4 py-3">
               <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">
-                Workshop Notes
+                Description
               </p>
-              <p className="text-sm text-zinc-300 leading-relaxed">{record.notes}</p>
+              <p className="text-sm text-zinc-300 leading-relaxed">{record.description}</p>
             </div>
           )}
         </div>
@@ -349,10 +337,9 @@ function ExpandedRow({ record, vehicleMap, canWrite, onEdit, onClose }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── *
- * CREATE / EDIT DRAWER FORM
- * Create path shows Rule 9 amber banner.
- * Edit path shows status selector (open/in_progress only — Close Job is a
- * separate dedicated action with its own endpoint + confirm dialog).
+ * CREATE / EDIT FORM MODAL
+ * Backend MaintenanceCreate accepts: vehicle_id, maintenance_type, description, cost
+ * Backend MaintenanceUpdate accepts: description, cost
  * ─────────────────────────────────────────────────────────────────────────── */
 
 function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord }) {
@@ -367,13 +354,9 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
   } = useForm({
     defaultValues: {
       vehicle_id: '',
-      maintenance_type: MAINTENANCE_TYPES.ROUTINE,
+      maintenance_type: MAINTENANCE_TYPES.GENERAL_SERVICE,
       description: '',
-      scheduled_date: '',
       cost: '',
-      odometer_reading: '',
-      notes: '',
-      status: MAINTENANCE_STATUS.OPEN,
     },
   });
 
@@ -383,26 +366,16 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
     if (isEdit && editRecord) {
       reset({
         vehicle_id: editRecord.vehicle_id ?? '',
-        maintenance_type: editRecord.maintenance_type ?? MAINTENANCE_TYPES.ROUTINE,
+        maintenance_type: editRecord.maintenance_type ?? MAINTENANCE_TYPES.GENERAL_SERVICE,
         description: editRecord.description ?? '',
-        scheduled_date: editRecord.scheduled_date
-          ? editRecord.scheduled_date.slice(0, 10)
-          : '',
         cost: editRecord.cost ?? '',
-        odometer_reading: editRecord.odometer_reading ?? '',
-        notes: editRecord.notes ?? '',
-        status: editRecord.status ?? MAINTENANCE_STATUS.OPEN,
       });
     } else {
       reset({
         vehicle_id: '',
-        maintenance_type: MAINTENANCE_TYPES.ROUTINE,
+        maintenance_type: MAINTENANCE_TYPES.GENERAL_SERVICE,
         description: '',
-        scheduled_date: '',
         cost: '',
-        odometer_reading: '',
-        notes: '',
-        status: MAINTENANCE_STATUS.OPEN,
       });
     }
   }, [isOpen, isEdit, editRecord, reset]);
@@ -410,22 +383,21 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
   const onSubmit = async (data) => {
     setServerError('');
     try {
-      const payload = {
-        ...(data.vehicle_id ? { vehicle_id: data.vehicle_id } : {}),
-        maintenance_type: data.maintenance_type,
-        ...(data.description ? { description: data.description } : {}),
-        ...(data.scheduled_date ? { scheduled_date: data.scheduled_date } : {}),
-        ...(data.cost !== '' ? { cost: Number(data.cost) } : {}),
-        ...(data.odometer_reading !== ''
-          ? { odometer_reading: Number(data.odometer_reading) }
-          : {}),
-        ...(data.notes ? { notes: data.notes } : {}),
-        ...(isEdit ? { status: data.status } : {}),
-      };
-
       if (isEdit) {
+        // Backend MaintenanceUpdate only accepts description + cost
+        const payload = {
+          ...(data.description ? { description: data.description } : {}),
+          ...(data.cost !== '' ? { cost: Number(data.cost) } : {}),
+        };
         await maintenanceApi.update(editRecord.id, payload);
       } else {
+        // Backend MaintenanceCreate: vehicle_id, maintenance_type, description, cost
+        const payload = {
+          vehicle_id: data.vehicle_id,
+          maintenance_type: data.maintenance_type,
+          ...(data.description ? { description: data.description } : {}),
+          ...(data.cost !== '' ? { cost: Number(data.cost) } : { cost: 0 }),
+        };
         await maintenanceApi.create(payload);
       }
       onSuccess();
@@ -440,7 +412,7 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
     { value: '', label: 'Select vehicle…' },
     ...vehicles.map((v) => ({
       value: v.id,
-      label: `${v.license_plate}${v.make ? ` — ${v.make} ${v.model ?? ''}`.trimEnd() : ''}`,
+      label: `${v.registration_number}${v.name ? ` — ${v.name}` : ''}`,
     })),
   ];
 
@@ -451,7 +423,7 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
       title={isEdit ? 'Update Maintenance Record' : 'Schedule Maintenance'}
       description={
         isEdit
-          ? 'Edit job details, status, or notes.'
+          ? 'Edit job details or cost.'
           : 'Create a new workshop job for a vehicle.'
       }
       variant="drawer"
@@ -475,20 +447,20 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
 
         <form id="maintenance-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* Vehicle (locked in edit mode) */}
-          <Select
-            label="Vehicle"
-            required={!isEdit}
-            options={vehicleOptions}
-            error={errors.vehicle_id?.message}
-            disabled={isEdit}
-            {...register('vehicle_id', {
-              validate: (v) =>
-                isEdit || v !== '' || 'Please select a vehicle',
-            })}
-          />
+          {!isEdit && (
+            <Select
+              label="Vehicle"
+              required
+              options={vehicleOptions}
+              error={errors.vehicle_id?.message}
+              {...register('vehicle_id', {
+                validate: (v) => v !== '' || 'Please select a vehicle',
+              })}
+            />
+          )}
 
-          {/* Type + Status */}
-          <div className={cn('grid gap-4', isEdit ? 'grid-cols-2' : 'grid-cols-1')}>
+          {/* Type — only settable at creation time */}
+          {!isEdit && (
             <Select
               label="Maintenance Type"
               required
@@ -496,16 +468,17 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
               error={errors.maintenance_type?.message}
               {...register('maintenance_type', { required: 'Type is required' })}
             />
-            {isEdit && (
-              <Select
-                label="Status"
-                options={STATUS_UPDATE_OPTIONS}
-                hint="Use &quot;Close Job&quot; to fully close a record."
-                error={errors.status?.message}
-                {...register('status')}
-              />
-            )}
-          </div>
+          )}
+
+          {/* In edit mode, show readonly info */}
+          {isEdit && (
+            <div className="rounded-xl bg-surface-700/40 px-4 py-3">
+              <p className="text-xs text-zinc-500 mb-1">Maintenance Type</p>
+              <p className="text-sm text-zinc-200 font-medium">
+                {getStatusMeta('maintenanceType', editRecord?.maintenance_type)?.label}
+              </p>
+            </div>
+          )}
 
           {/* Description */}
           <Input
@@ -515,46 +488,17 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
             {...register('description')}
           />
 
-          {/* Date + Cost */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Scheduled Date"
-              type="date"
-              error={errors.scheduled_date?.message}
-              {...register('scheduled_date')}
-            />
-            <Input
-              label="Cost (USD)"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              error={errors.cost?.message}
-              {...register('cost', {
-                min: { value: 0, message: 'Must be ≥ 0' },
-              })}
-            />
-          </div>
-
-          {/* Odometer */}
+          {/* Cost */}
           <Input
-            label="Odometer Reading (km)"
+            label="Cost (USD)"
             type="number"
+            step="0.01"
             min="0"
-            placeholder="e.g. 85000"
-            error={errors.odometer_reading?.message}
-            {...register('odometer_reading', {
+            placeholder="0.00"
+            error={errors.cost?.message}
+            {...register('cost', {
               min: { value: 0, message: 'Must be ≥ 0' },
             })}
-          />
-
-          {/* Notes */}
-          <Textarea
-            label="Workshop Notes"
-            placeholder="Additional instructions for the mechanic…"
-            rows={3}
-            error={errors.notes?.message}
-            {...register('notes')}
           />
 
           {serverError && (
@@ -590,6 +534,7 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
 
 export default function Maintenance() {
   const hasRole = useAuthStore((s) => s.hasRole);
+  // hasRole is (...roles) => roles.includes(user?.role)
   const canWrite = hasRole('admin', 'fleet_manager');
 
   /* ── data state ── */
@@ -606,7 +551,7 @@ export default function Maintenance() {
 
   /* ── table state ── */
   const [expandedId, setExpandedId] = useState(null);
-  const [sorting, setSorting] = useState([{ id: 'scheduled_date', desc: true }]);
+  const [sorting, setSorting] = useState([{ id: 'started_at', desc: true }]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
   /* ── modal state ── */
@@ -656,9 +601,8 @@ export default function Maintenance() {
         const haystack = [
           r.description ?? '',
           typeMeta.label,
-          vehicle?.license_plate ?? '',
-          vehicle?.make ?? '',
-          r.notes ?? '',
+          vehicle?.registration_number ?? '',
+          vehicle?.name ?? '',
         ]
           .join(' ')
           .toLowerCase();
@@ -670,10 +614,10 @@ export default function Maintenance() {
 
   /* ── KPIs ── */
   const kpis = useMemo(() => ({
-    open: records.filter((r) => r.status === MAINTENANCE_STATUS.OPEN).length,
-    inProg: records.filter((r) => r.status === MAINTENANCE_STATUS.IN_PROGRESS).length,
+    active: records.filter((r) => r.status === MAINTENANCE_STATUS.ACTIVE).length,
     closed: records.filter((r) => r.status === MAINTENANCE_STATUS.CLOSED).length,
-    emergency: records.filter((r) => r.maintenance_type === MAINTENANCE_TYPES.EMERGENCY).length,
+    total: records.length,
+    totalCost: records.reduce((s, r) => s + (r.cost ?? 0), 0),
   }), [records]);
 
   /* ── vehicle filter options (only vehicles that actually appear in records) ── */
@@ -683,7 +627,7 @@ export default function Maintenance() {
       { value: '', label: 'All Vehicles' },
       ...ids.map((id) => {
         const v = vehicleMap[id];
-        return { value: id, label: v?.license_plate ?? id };
+        return { value: id, label: v?.registration_number ?? id };
       }),
     ];
   }, [records, vehicleMap]);
@@ -744,7 +688,7 @@ export default function Maintenance() {
       {
         accessorKey: 'maintenance_type',
         header: 'Type',
-        size: 155,
+        size: 175,
         cell: ({ getValue }) => (
           <StatusChip type="maintenanceType" status={getValue()} />
         ),
@@ -752,17 +696,17 @@ export default function Maintenance() {
       {
         id: 'vehicle',
         header: 'Vehicle',
-        size: 155,
+        size: 175,
         accessorFn: (row) =>
-          vehicleMap[row.vehicle_id]?.license_plate ?? row.vehicle_id ?? '—',
+          vehicleMap[row.vehicle_id]?.registration_number ?? row.vehicle_id ?? '—',
         cell: ({ getValue, row }) => {
           const v = vehicleMap[row.original.vehicle_id];
           return (
             <div>
               <p className="text-sm font-medium text-zinc-200">{getValue()}</p>
-              {v?.make && (
+              {v?.name && (
                 <p className="text-xs text-zinc-500">
-                  {v.make} {v.model}
+                  {v.name}{v.model ? ` ${v.model}` : ''}
                 </p>
               )}
             </div>
@@ -781,8 +725,8 @@ export default function Maintenance() {
         ),
       },
       {
-        accessorKey: 'scheduled_date',
-        header: 'Scheduled',
+        accessorKey: 'started_at',
+        header: 'Started',
         size: 120,
         cell: ({ getValue }) =>
           getValue() ? (
@@ -875,10 +819,10 @@ export default function Maintenance() {
 
       {/* ── KPI STRIP ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Open Jobs"   value={kpis.open}      icon={Clock}         color="warning" subtitle="Awaiting workshop" />
-        <KpiCard label="In Progress" value={kpis.inProg}    icon={Wrench}        color="info"    subtitle="Currently serviced" />
-        <KpiCard label="Closed"      value={kpis.closed}    icon={CheckCircle2}  color="success" subtitle="Completed jobs" />
-        <KpiCard label="Emergency"   value={kpis.emergency} icon={AlertTriangle} color="danger"  subtitle="All time" />
+        <KpiCard label="Active Jobs"   value={kpis.active}  icon={Wrench}        color="warning" subtitle="Vehicles in shop" />
+        <KpiCard label="Closed Jobs"   value={kpis.closed}  icon={CheckCircle2}  color="success" subtitle="Completed jobs" />
+        <KpiCard label="Total Records" value={kpis.total}   icon={Clock}         color="info"    subtitle="All time" />
+        <KpiCard label="Total Cost"    value={`$${kpis.totalCost.toFixed(0)}`} icon={AlertTriangle} color="muted" subtitle="Combined maintenance cost" />
       </div>
 
       {/* ── FILTER BAR ── */}
@@ -897,7 +841,7 @@ export default function Maintenance() {
               setSearch(e.target.value);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            placeholder="Search description, vehicle, notes…"
+            placeholder="Search description, vehicle…"
             id="maintenance-search"
             className="w-full bg-surface-600/60 border border-border rounded-xl text-sm text-zinc-100 placeholder:text-zinc-500 pl-9 pr-4 py-2.5 outline-none focus:border-accent-500 focus:shadow-glow-sm transition-all duration-200"
           />
@@ -1053,8 +997,7 @@ export default function Maintenance() {
                       const rec = row.original;
                       const isExpanded = expandedId === rec.id;
                       const c = colorFor(rec.status);
-                      const isInProgress =
-                        rec.status === MAINTENANCE_STATUS.IN_PROGRESS;
+                      const isActiveStatus = rec.status === MAINTENANCE_STATUS.ACTIVE;
 
                       return (
                         <React.Fragment key={rec.id}>
@@ -1072,13 +1015,13 @@ export default function Maintenance() {
                               )
                             }
                           >
-                            {/* Colored left accent bar — pulses for in_progress */}
+                            {/* Colored left accent bar */}
                             <td className="relative w-0 p-0 overflow-visible">
                               <div
                                 className={cn(
                                   'absolute left-0 top-0 bottom-0 w-[3px] rounded-r-sm',
                                   c.bar,
-                                  isInProgress && 'animate-pulse-glow'
+                                  isActiveStatus && 'animate-pulse-glow'
                                 )}
                               />
                             </td>
@@ -1186,8 +1129,8 @@ export default function Maintenance() {
         title="Close Maintenance Job?"
         description={
           closeTarget
-            ? `Closing this job will automatically restore the vehicle's status (Rule 10).\n\nVehicle: ${
-                vehicleMap[closeTarget.vehicle_id]?.license_plate ??
+            ? `Closing this job will automatically restore the vehicle's status to Available (Rule 10).\n\nVehicle: ${
+                vehicleMap[closeTarget.vehicle_id]?.registration_number ??
                 closeTarget.vehicle_id ??
                 '—'
               }`

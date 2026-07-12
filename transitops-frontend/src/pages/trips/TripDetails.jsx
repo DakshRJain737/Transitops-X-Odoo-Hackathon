@@ -137,7 +137,7 @@ export default function TripDetails() {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['driver', 'fleet_manager', 'admin']) : true;
+  const canManage = hasRole('driver', 'fleet_manager', 'admin');
 
   const [trip, setTrip] = useState(null);
   const [vehicle, setVehicle] = useState(null);

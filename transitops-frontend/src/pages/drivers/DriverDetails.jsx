@@ -168,7 +168,7 @@ export default function DriverDetails() {
   const { driverId } = useParams();
   const navigate = useNavigate();
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['fleet_manager', 'safety_officer', 'admin']) : true;
+  const canManage = hasRole('fleet_manager', 'safety_officer', 'admin');
 
   const [driver, setDriver] = useState(null);
   const [loading, setLoading] = useState(true);

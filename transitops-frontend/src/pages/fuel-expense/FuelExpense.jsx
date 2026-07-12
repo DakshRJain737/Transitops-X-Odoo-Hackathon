@@ -44,7 +44,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import fuelExpenseApi from '../../services/fuelExpense';
 import vehiclesApi from '../../services/vehicles';
 import tripsApi from '../../services/trips';
@@ -66,11 +66,10 @@ import { cn } from '../../utils/cn';
  * ─────────────────────────────────────────────────────────────────────────── */
 
 const EXPENSE_PIE_COLORS = {
-  [EXPENSE_TYPES.TOLL]:    '#60a5fa', // blue
-  [EXPENSE_TYPES.PARKING]: '#8b8b95', // muted
-  [EXPENSE_TYPES.FINE]:    '#fb7185', // rose
-  [EXPENSE_TYPES.REPAIR]:  '#fbbf24', // amber
-  [EXPENSE_TYPES.OTHER]:   '#a78bfa', // violet
+  [EXPENSE_TYPES.TOLL]:        '#60a5fa', // blue
+  [EXPENSE_TYPES.REPAIR]:      '#fbbf24', // amber
+  [EXPENSE_TYPES.MAINTENANCE]: '#fb7185', // rose
+  [EXPENSE_TYPES.OTHER]:       '#a78bfa', // violet
 };
 
 const CHART_COLORS = {
@@ -90,11 +89,10 @@ const TABS = [
 ];
 
 const EXPENSE_TYPE_OPTIONS = [
-  { value: EXPENSE_TYPES.TOLL,    label: 'Toll' },
-  { value: EXPENSE_TYPES.PARKING, label: 'Parking' },
-  { value: EXPENSE_TYPES.FINE,    label: 'Fine' },
-  { value: EXPENSE_TYPES.REPAIR,  label: 'Repair' },
-  { value: EXPENSE_TYPES.OTHER,   label: 'Other' },
+  { value: EXPENSE_TYPES.TOLL,        label: 'Toll' },
+  { value: EXPENSE_TYPES.REPAIR,      label: 'Repair' },
+  { value: EXPENSE_TYPES.MAINTENANCE, label: 'Maintenance' },
+  { value: EXPENSE_TYPES.OTHER,       label: 'Other' },
 ];
 
 const EXPENSE_FILTER_OPTIONS = [
@@ -184,16 +182,14 @@ function FuelLogExpanded({ record, vehicleMap }) {
       className="overflow-hidden"
     >
       <div className="px-4 pb-4 pt-1">
-        <div className="rounded-2xl border border-info-400/20 bg-surface-800/60 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-2xl border border-info-400/20 bg-surface-800/60 p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Vehicle', value: vehicle?.license_plate ?? record.vehicle_id ?? '—' },
+            { label: 'Vehicle', value: vehicle?.registration_number ?? record.vehicle_id ?? '—' },
             { label: 'Litres', value: record.liters != null ? `${Number(record.liters).toFixed(2)} L` : '—' },
-            { label: 'Cost / Litre', value: record.cost_per_liter != null ? `$${Number(record.cost_per_liter).toFixed(3)}` : '—' },
-            { label: 'Odometer', value: record.odometer_reading != null ? `${Number(record.odometer_reading).toLocaleString()} km` : '—' },
-            { label: 'Date', value: record.fueled_at ? new Date(record.fueled_at).toLocaleDateString() : '—' },
-            { label: 'Total Cost', value: record.total_cost != null ? `$${Number(record.total_cost).toFixed(2)}` : '—' },
+            { label: 'Total Cost', value: record.cost != null ? `$${Number(record.cost).toFixed(2)}` : '—' },
+            { label: 'Date', value: record.date ? new Date(record.date).toLocaleDateString() : '—' },
             { label: 'Linked Trip', value: record.trip_id ?? '—' },
-            { label: 'Notes', value: record.notes ?? '—' },
+            { label: 'Created', value: record.created_at ? new Date(record.created_at).toLocaleDateString() : '—' },
           ].map(({ label, value }) => (
             <div key={label} className="bg-surface-700/60 rounded-xl px-3 py-2.5">
               <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
@@ -221,12 +217,11 @@ function ExpenseExpanded({ record, vehicleMap }) {
       className="overflow-hidden"
     >
       <div className="px-4 pb-4 pt-1">
-        <div className="rounded-2xl border border-border bg-surface-800/60 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-2xl border border-border bg-surface-800/60 p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { label: 'Vehicle', value: vehicle?.license_plate ?? record.vehicle_id ?? '—' },
+            { label: 'Vehicle', value: vehicle?.registration_number ?? record.vehicle_id ?? '—' },
             { label: 'Amount', value: record.amount != null ? `$${Number(record.amount).toFixed(2)}` : '—' },
             { label: 'Date', value: record.date ? new Date(record.date).toLocaleDateString() : '—' },
-            { label: 'Linked Trip', value: record.trip_id ?? '—' },
             { label: 'Description', value: record.description ?? '—' },
           ].map(({ label, value }) => (
             <div key={label} className="bg-surface-700/60 rounded-xl px-3 py-2.5">
@@ -251,42 +246,31 @@ function FuelLogModal({ isOpen, onClose, onSuccess, vehicles }) {
     register,
     handleSubmit,
     reset,
-    control,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
       vehicle_id: '',
       trip_id: '',
       liters: '',
-      cost_per_liter: '',
-      odometer_reading: '',
-      fueled_at: '',
-      notes: '',
+      cost: '',
+      date: '',
     },
   });
-
-  // Live total preview
-  const [liters, cpl] = useWatch({ control, name: ['liters', 'cost_per_liter'] });
-  const liveTotal =
-    liters && cpl && !isNaN(Number(liters)) && !isNaN(Number(cpl))
-      ? (Number(liters) * Number(cpl)).toFixed(2)
-      : null;
 
   useEffect(() => {
     if (isOpen) { reset(); setServerError(''); }
   }, [isOpen, reset]);
 
+  // Backend FuelLogCreate: vehicle_id (str, required), trip_id (optional), liters (float>0), cost (float>=0), date (date)
   const onSubmit = async (data) => {
     setServerError('');
     try {
       const payload = {
-        vehicle_id: data.vehicle_id || undefined,
+        vehicle_id: data.vehicle_id,
         ...(data.trip_id ? { trip_id: data.trip_id } : {}),
-        liters: data.liters !== '' ? Number(data.liters) : undefined,
-        cost_per_liter: data.cost_per_liter !== '' ? Number(data.cost_per_liter) : undefined,
-        ...(data.odometer_reading !== '' ? { odometer_reading: Number(data.odometer_reading) } : {}),
-        ...(data.fueled_at ? { fueled_at: data.fueled_at } : {}),
-        ...(data.notes ? { notes: data.notes } : {}),
+        liters: Number(data.liters),
+        cost: Number(data.cost),
+        date: data.date || new Date().toISOString().split('T')[0],
       };
       await fuelExpenseApi.createFuelLog(payload);
       onSuccess();
@@ -299,7 +283,7 @@ function FuelLogModal({ isOpen, onClose, onSuccess, vehicles }) {
     { value: '', label: 'Select vehicle…' },
     ...vehicles.map((v) => ({
       value: v.id,
-      label: `${v.license_plate}${v.make ? ` — ${v.make} ${v.model ?? ''}`.trimEnd() : ''}`,
+      label: `${v.registration_number}${v.name ? ` — ${v.name}` : ''}`,
     })),
   ];
 
@@ -331,7 +315,7 @@ function FuelLogModal({ isOpen, onClose, onSuccess, vehicles }) {
             {...register('trip_id')}
           />
 
-          {/* Litres + Cost/L */}
+          {/* Litres + Total Cost */}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Litres"
@@ -347,59 +331,26 @@ function FuelLogModal({ isOpen, onClose, onSuccess, vehicles }) {
               })}
             />
             <Input
-              label="Cost per Litre ($)"
+              label="Total Cost ($)"
               type="number"
-              step="0.001"
+              step="0.01"
               min="0"
-              placeholder="e.g. 1.850"
+              placeholder="e.g. 85.00"
               required
-              error={errors.cost_per_liter?.message}
-              {...register('cost_per_liter', {
-                required: 'Cost/L is required',
+              error={errors.cost?.message}
+              {...register('cost', {
+                required: 'Cost is required',
                 min: { value: 0, message: 'Must be ≥ 0' },
               })}
             />
           </div>
 
-          {/* Live total preview */}
-          {liveTotal && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 bg-info-bg border border-info-400/25 rounded-xl px-4 py-2.5"
-            >
-              <Droplets className="w-4 h-4 text-info-400 shrink-0" />
-              <p className="text-sm text-info-400">
-                Estimated total:{' '}
-                <span className="font-bold font-mono">${liveTotal}</span>
-              </p>
-            </motion.div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Date / Time"
-              type="datetime-local"
-              error={errors.fueled_at?.message}
-              {...register('fueled_at')}
-            />
-            <Input
-              label="Odometer (km)"
-              type="number"
-              min="0"
-              placeholder="e.g. 85000"
-              error={errors.odometer_reading?.message}
-              {...register('odometer_reading', {
-                min: { value: 0, message: 'Must be ≥ 0' },
-              })}
-            />
-          </div>
-
-          <Textarea
-            label="Notes"
-            placeholder="Station name, reference number…"
-            rows={2}
-            {...register('notes')}
+          <Input
+            label="Date"
+            type="date"
+            required
+            error={errors.date?.message}
+            {...register('date', { required: 'Date is required' })}
           />
 
           {serverError && (
@@ -440,7 +391,6 @@ function ExpenseModal({ isOpen, onClose, onSuccess, vehicles }) {
   } = useForm({
     defaultValues: {
       vehicle_id: '',
-      trip_id: '',
       expense_type: EXPENSE_TYPES.TOLL,
       amount: '',
       description: '',
@@ -452,16 +402,16 @@ function ExpenseModal({ isOpen, onClose, onSuccess, vehicles }) {
     if (isOpen) { reset(); setServerError(''); }
   }, [isOpen, reset]);
 
+  // Backend ExpenseCreate: vehicle_id (required str), expense_type, amount (float>=0), description (optional), date (date)
   const onSubmit = async (data) => {
     setServerError('');
     try {
       const payload = {
-        ...(data.vehicle_id ? { vehicle_id: data.vehicle_id } : {}),
-        ...(data.trip_id ? { trip_id: data.trip_id } : {}),
+        vehicle_id: data.vehicle_id,
         expense_type: data.expense_type,
-        amount: data.amount !== '' ? Number(data.amount) : undefined,
+        amount: Number(data.amount),
         ...(data.description ? { description: data.description } : {}),
-        ...(data.date ? { date: data.date } : {}),
+        date: data.date || new Date().toISOString().split('T')[0],
       };
       await fuelExpenseApi.createExpense(payload);
       onSuccess();
@@ -471,10 +421,10 @@ function ExpenseModal({ isOpen, onClose, onSuccess, vehicles }) {
   };
 
   const vehicleOptions = [
-    { value: '', label: 'Select vehicle (optional)…' },
+    { value: '', label: 'Select vehicle…' },
     ...vehicles.map((v) => ({
       value: v.id,
-      label: `${v.license_plate}${v.make ? ` — ${v.make} ${v.model ?? ''}`.trimEnd() : ''}`,
+      label: `${v.registration_number}${v.name ? ` — ${v.name}` : ''}`,
     })),
   ];
 
@@ -490,16 +440,13 @@ function ExpenseModal({ isOpen, onClose, onSuccess, vehicles }) {
       <ModalBody>
         <form id="expense-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Select
-            label="Vehicle (optional)"
+            label="Vehicle"
+            required
             options={vehicleOptions}
             error={errors.vehicle_id?.message}
-            {...register('vehicle_id')}
-          />
-
-          <Input
-            label="Trip ID (optional)"
-            placeholder="Link to a trip UUID…"
-            {...register('trip_id')}
+            {...register('vehicle_id', {
+              validate: (v) => v !== '' || 'Please select a vehicle',
+            })}
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -528,8 +475,9 @@ function ExpenseModal({ isOpen, onClose, onSuccess, vehicles }) {
           <Input
             label="Date"
             type="date"
+            required
             error={errors.date?.message}
-            {...register('date')}
+            {...register('date', { required: 'Date is required' })}
           />
 
           <Textarea
@@ -571,7 +519,7 @@ export default function FuelExpense() {
   const hasRole = useAuthStore((s) => s.hasRole);
 
   // Create permissions per service comments in fuelExpense.js
-  const canCreateFuelLog  = hasRole('admin', 'fleet_manager', 'driver', 'financial_analyst');
+  const canCreateFuelLog = hasRole('admin', 'fleet_manager', 'driver', 'financial_analyst');
   const canCreateExpense  = hasRole('admin', 'fleet_manager', 'financial_analyst');
 
   /* ── data ── */
@@ -640,7 +588,7 @@ export default function FuelExpense() {
       if (fuelVehicle && r.vehicle_id !== fuelVehicle) return false;
       if (q) {
         const v = vehicleMap[r.vehicle_id];
-        const hay = [v?.license_plate ?? '', r.notes ?? ''].join(' ').toLowerCase();
+        const hay = [v?.registration_number ?? '', v?.name ?? ''].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -656,7 +604,7 @@ export default function FuelExpense() {
       if (q) {
         const v = vehicleMap[r.vehicle_id];
         const typeMeta = getStatusMeta('expenseType', r.expense_type);
-        const hay = [v?.license_plate ?? '', r.description ?? '', typeMeta.label].join(' ').toLowerCase();
+        const hay = [v?.registration_number ?? '', r.description ?? '', typeMeta.label].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -665,7 +613,8 @@ export default function FuelExpense() {
 
   /* ── KPIs ── */
   const kpis = useMemo(() => {
-    const totalFuelCost   = fuelLogs.reduce((s, r) => s + (r.total_cost ?? (r.liters * r.cost_per_liter) ?? 0), 0);
+    // Backend FuelLog uses `cost` field (total cost, not cost_per_liter)
+    const totalFuelCost   = fuelLogs.reduce((s, r) => s + (r.cost ?? 0), 0);
     const totalLiters     = fuelLogs.reduce((s, r) => s + (r.liters ?? 0), 0);
     const totalExpenses   = expenses.reduce((s, r) => s + (r.amount ?? 0), 0);
     const totalOperational = totalFuelCost + totalExpenses;
@@ -676,8 +625,8 @@ export default function FuelExpense() {
   const fuelByVehicle = useMemo(() => {
     const acc = {};
     fuelLogs.forEach((r) => {
-      const plate = vehicleMap[r.vehicle_id]?.license_plate ?? r.vehicle_id ?? 'Unknown';
-      const cost  = r.total_cost ?? (r.liters * r.cost_per_liter) ?? 0;
+      const plate = vehicleMap[r.vehicle_id]?.registration_number ?? r.vehicle_id ?? 'Unknown';
+      const cost  = r.cost ?? 0;
       acc[plate]  = (acc[plate] ?? 0) + cost;
     });
     return Object.entries(acc)
@@ -705,7 +654,7 @@ export default function FuelExpense() {
     const ids = [...new Set(fuelLogs.map((r) => r.vehicle_id).filter(Boolean))];
     return [
       { value: '', label: 'All Vehicles' },
-      ...ids.map((id) => ({ value: id, label: vehicleMap[id]?.license_plate ?? id })),
+      ...ids.map((id) => ({ value: id, label: vehicleMap[id]?.registration_number ?? id })),
     ];
   }, [fuelLogs, vehicleMap]);
 
@@ -713,11 +662,12 @@ export default function FuelExpense() {
     const ids = [...new Set(expenses.map((r) => r.vehicle_id).filter(Boolean))];
     return [
       { value: '', label: 'All Vehicles' },
-      ...ids.map((id) => ({ value: id, label: vehicleMap[id]?.license_plate ?? id })),
+      ...ids.map((id) => ({ value: id, label: vehicleMap[id]?.registration_number ?? id })),
     ];
   }, [expenses, vehicleMap]);
 
   /* ── Fuel Logs table columns ── */
+  // Backend FuelLog fields: id, vehicle_id, trip_id, liters, cost, date, created_at
   const fuelColumns = useMemo(() => [
     {
       id: 'expander', header: '', size: 44, enableSorting: false,
@@ -731,8 +681,8 @@ export default function FuelExpense() {
       ),
     },
     {
-      id: 'vehicle', header: 'Vehicle', size: 140,
-      accessorFn: (r) => vehicleMap[r.vehicle_id]?.license_plate ?? r.vehicle_id ?? '—',
+      id: 'vehicle', header: 'Vehicle', size: 150,
+      accessorFn: (r) => vehicleMap[r.vehicle_id]?.registration_number ?? r.vehicle_id ?? '—',
       cell: ({ getValue }) => <span className="text-sm font-medium text-zinc-200">{getValue()}</span>,
     },
     {
@@ -740,12 +690,7 @@ export default function FuelExpense() {
       cell: ({ getValue }) => <span className="text-sm font-mono text-zinc-300">{getValue() != null ? `${Number(getValue()).toFixed(2)} L` : '—'}</span>,
     },
     {
-      accessorKey: 'cost_per_liter', header: 'Cost/L', size: 100,
-      cell: ({ getValue }) => <span className="text-sm font-mono text-zinc-300">{getValue() != null ? `$${Number(getValue()).toFixed(3)}` : '—'}</span>,
-    },
-    {
-      id: 'total_cost', header: 'Total', size: 110,
-      accessorFn: (r) => r.total_cost ?? (r.liters && r.cost_per_liter ? r.liters * r.cost_per_liter : null),
+      accessorKey: 'cost', header: 'Total Cost', size: 120,
       cell: ({ getValue }) => (
         <span className="text-sm font-bold font-mono text-[#22d3ee]">
           {getValue() != null ? `$${Number(getValue()).toFixed(2)}` : '—'}
@@ -753,24 +698,17 @@ export default function FuelExpense() {
       ),
     },
     {
-      accessorKey: 'fueled_at', header: 'Date', size: 120,
+      accessorKey: 'date', header: 'Date', size: 120,
       cell: ({ getValue }) => (
         <span className="text-sm text-zinc-300">
           {getValue() ? new Date(getValue()).toLocaleDateString() : '—'}
         </span>
       ),
     },
-    {
-      accessorKey: 'odometer_reading', header: 'Odometer', size: 120,
-      cell: ({ getValue }) => (
-        <span className="text-sm text-zinc-400 font-mono">
-          {getValue() != null ? `${Number(getValue()).toLocaleString()} km` : '—'}
-        </span>
-      ),
-    },
   ], [vehicleMap, fuelExpandedId]);
 
   /* ── Expenses table columns ── */
+  // Backend Expense fields: id, vehicle_id, expense_type, amount, description, date, created_at
   const expColumns = useMemo(() => [
     {
       id: 'expander', header: '', size: 44, enableSorting: false,
@@ -784,12 +722,12 @@ export default function FuelExpense() {
       ),
     },
     {
-      accessorKey: 'expense_type', header: 'Type', size: 130,
+      accessorKey: 'expense_type', header: 'Type', size: 140,
       cell: ({ getValue }) => <StatusChip type="expenseType" status={getValue()} />,
     },
     {
-      id: 'vehicle', header: 'Vehicle', size: 140,
-      accessorFn: (r) => vehicleMap[r.vehicle_id]?.license_plate ?? r.vehicle_id ?? '—',
+      id: 'vehicle', header: 'Vehicle', size: 150,
+      accessorFn: (r) => vehicleMap[r.vehicle_id]?.registration_number ?? r.vehicle_id ?? '—',
       cell: ({ getValue }) => <span className="text-sm font-medium text-zinc-200">{getValue()}</span>,
     },
     {

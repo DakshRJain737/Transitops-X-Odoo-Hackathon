@@ -241,7 +241,7 @@ function DriverForm({ defaultValues, onSubmit, onCancel, isSubmitting, mode }) {
 
 export default function DriversList() {
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['fleet_manager', 'safety_officer', 'admin']) : true;
+  const canManage = hasRole('fleet_manager', 'safety_officer', 'admin');
 
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);

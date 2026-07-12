@@ -269,7 +269,7 @@ function FleetDashboardSection({ data, isLoading, isLoaded, error, onLoad }) {
 /* ─────────────────────────────────────────────────────────────────────────── *
  * FUEL EFFICIENCY SECTION
  * Response shape (inferred): Array of {
- *   vehicle_id, license_plate, total_distance_km,
+ *   vehicle_id, registration_number, total_distance_km,
  *   total_fuel_liters, efficiency_km_per_liter
  * }
  * ─────────────────────────────────────────────────────────────────────────── */
@@ -277,7 +277,7 @@ function FuelEfficiencySection({ data, isLoading, isLoaded, error, onLoad }) {
   const chartData = useMemo(() =>
     (data ?? [])
       .map((r) => ({
-        plate:      r.license_plate ?? r.vehicle_id ?? '?',
+        plate:      r.registration_number ?? r.vehicle_id ?? '?',
         efficiency: r.efficiency_km_per_liter != null
           ? parseFloat(Number(r.efficiency_km_per_liter).toFixed(2))
           : null,
@@ -288,7 +288,7 @@ function FuelEfficiencySection({ data, isLoading, isLoaded, error, onLoad }) {
   );
 
   const tableColumns = [
-    { key: 'license_plate', label: 'Vehicle',      render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
+    { key: 'registration_number', label: 'Vehicle',      render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
     { key: 'total_distance_km',    label: 'Distance',     render: (v) => <span className="font-mono text-zinc-300">{v != null ? `${Number(v).toLocaleString()} km` : '—'}</span> },
     { key: 'total_fuel_liters',    label: 'Fuel Used',    render: (v) => <span className="font-mono text-zinc-300">{v != null ? `${Number(v).toFixed(1)} L` : '—'}</span> },
     {
@@ -346,7 +346,7 @@ function FuelEfficiencySection({ data, isLoading, isLoaded, error, onLoad }) {
 /* ─────────────────────────────────────────────────────────────────────────── *
  * OPERATIONAL COST SECTION
  * Response shape (inferred): Array of {
- *   vehicle_id, license_plate,
+ *   vehicle_id, registration_number,
  *   fuel_cost, maintenance_cost, other_expenses, total_cost
  * }
  * ─────────────────────────────────────────────────────────────────────────── */
@@ -354,7 +354,7 @@ function OperationalCostSection({ data, isLoading, isLoaded, error, onLoad }) {
   const chartData = useMemo(() =>
     (data ?? [])
       .map((r) => ({
-        plate:       r.license_plate ?? r.vehicle_id ?? '?',
+        plate:       r.registration_number ?? r.vehicle_id ?? '?',
         fuel:        parseFloat(Number(r.fuel_cost        ?? 0).toFixed(2)),
         maintenance: parseFloat(Number(r.maintenance_cost ?? 0).toFixed(2)),
         other:       parseFloat(Number(r.other_expenses   ?? 0).toFixed(2)),
@@ -364,7 +364,7 @@ function OperationalCostSection({ data, isLoading, isLoaded, error, onLoad }) {
   );
 
   const tableColumns = [
-    { key: 'license_plate',    label: 'Vehicle',       render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
+    { key: 'registration_number',    label: 'Vehicle',       render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
     { key: 'fuel_cost',        label: 'Fuel',          render: (v) => <span className="font-mono text-[#22d3ee]">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
     { key: 'maintenance_cost', label: 'Maintenance',   render: (v) => <span className="font-mono text-warning-400">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
     { key: 'other_expenses',   label: 'Other',         render: (v) => <span className="font-mono text-[#a78bfa]">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
@@ -418,7 +418,7 @@ function OperationalCostSection({ data, isLoading, isLoaded, error, onLoad }) {
 /* ─────────────────────────────────────────────────────────────────────────── *
  * ROI SECTION
  * Response shape (inferred): Array of {
- *   vehicle_id, license_plate, roi_pct (or roi),
+ *   vehicle_id, registration_number, roi_pct (or roi),
  *   revenue, total_cost, acquisition_cost
  * }
  * Bars colored per-entry: positive ROI → emerald, negative → rose.
@@ -428,7 +428,7 @@ function RoiSection({ data, isLoading, isLoaded, error, onLoad }) {
   const chartData = useMemo(() =>
     (data ?? [])
       .map((r) => ({
-        plate: r.license_plate ?? r.vehicle_id ?? '?',
+        plate: r.registration_number ?? r.vehicle_id ?? '?',
         roi:   r.roi_pct != null ? parseFloat(Number(r.roi_pct).toFixed(2))
              : r.roi    != null ? parseFloat(Number(r.roi).toFixed(2))
              : null,
@@ -440,7 +440,7 @@ function RoiSection({ data, isLoading, isLoaded, error, onLoad }) {
   );
 
   const tableColumns = [
-    { key: 'license_plate', label: 'Vehicle',    render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
+    { key: 'registration_number', label: 'Vehicle',    render: (v, r) => <span className="font-medium text-zinc-200">{v ?? r.vehicle_id}</span> },
     { key: 'revenue',       label: 'Revenue',    render: (v) => <span className="font-mono text-success-400">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
     { key: 'total_cost',    label: 'Total Cost', render: (v) => <span className="font-mono text-danger-400">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
     { key: 'acquisition_cost', label: 'Acq. Cost', render: (v) => <span className="font-mono text-zinc-400">{v != null ? `$${Number(v).toFixed(2)}` : '—'}</span> },
