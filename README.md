@@ -296,12 +296,3 @@ Every service file is a thin, one-to-one wrapper over its corresponding backend 
 | `/api/notifications` | `/expiring-licenses`, `/send-license-reminders` |
 
 Full interactive docs: `http://localhost:8000/docs`.
-
-## Known Gaps / Things to Watch
-
-- **`Register.jsx` is missing.** `AppRoutes.jsx` lazy-imports `../pages/auth/Register`, but no such file exists in the repository yet — visiting `/register` will currently fail to resolve.
-- **Hardcoded personal email addresses.** `backend/app/core/license_reminder.py` sends every license-expiry alert to three hardcoded Gmail addresses in addition to the intended role-based recipients. This looks like leftover debugging code and should be removed before any real deployment.
-- **A live SQLite database file is committed** at both `backend/transitops.db` and the repo-root `transitops.db`. Consider adding `*.db` to `.gitignore` and relying on `seed.py` for reproducible sample data instead.
-- **`SECRET_KEY` has an insecure default** (`"your-secret-key-change-this-later"`) in `core/config.py` — make sure a real secret is set via `.env` before deploying anywhere.
-- **Test coverage is minimal** — only one `unittest` case exists (`test_vehicle_documents.py`); the trip lifecycle business rules (capacity checks, status transitions) have no automated tests yet.
-- **CORS is hardcoded** to `http://localhost:5173` in `main.py`; update `allow_origins` for any non-local deployment.
