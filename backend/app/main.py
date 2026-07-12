@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.base import Base
+
+from app.db.base_all_models import Base
 from app.db.session import engine
 
 app = FastAPI(title="TransitOps API")
