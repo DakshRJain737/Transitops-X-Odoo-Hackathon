@@ -1,6 +1,12 @@
 import axios from "axios";
 import { getAuthState, useAuthStore } from "../store/authStore";
+import { toast } from "../store/toastStore";
 
+/**
+ * Base URL resolves from .env (VITE_API_BASE_URL). Falls back to the
+ * README's documented default so the app still works out of the box
+ * in local dev if .env hasn't been created yet.
+ */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export const api = axios.create({
@@ -64,6 +70,13 @@ api.interceptors.response.use(
       if (typeof window !== "undefined") {
         window.location.href = "/login";
       }
+    }
+
+    // Auto-toast every API failure except login (the Login form shows its own
+    // inline error) and 422 validation errors (forms display those field-by-field
+    // via React Hook Form instead of a generic toast).
+    if (!isLoginRequest && status !== 422) {
+      toast.error(message);
     }
 
     return Promise.reject({ ...error, message });

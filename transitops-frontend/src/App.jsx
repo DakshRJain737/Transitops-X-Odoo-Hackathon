@@ -1,122 +1,69 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect } from "react";
+import { BrowserRouter } from "react-router-dom";
+import { AppRoutes } from "./routes/AppRoutes";
+import { useAuthStore } from "./store/authStore";
+import { authApi } from "./services/auth";
+import { ToastContainer } from "./components/ui/Toast";
 
-function App() {
-  const [count, setCount] = useState(0)
+/**
+ * App — root component.
+ *
+ * Auth bootstrap: Zustand's `persist` middleware restores `token`/`user` from
+ * localStorage synchronously on load, but we still need to VALIDATE that token
+ * against the backend (it may have expired — ACCESS_TOKEN_EXPIRE_MINUTES=1440
+ * per README, so a token from yesterday is dead weight). This effect:
+ *
+ *   1. If no token exists at all → not authenticated, stop loading immediately.
+ *   2. If a token exists → call GET /api/auth/me to confirm it's still valid
+ *      and refresh the user profile (role/active-status may have changed
+ *      server-side since last login).
+ *   3. On failure (401 etc.) → the axios interceptor in services/api.js already
+ *      clears the session and redirects; we just also flip isLoading off here
+ *      as a safety net in case that redirect races with this component.
+ *
+ * ProtectedRoute reads `isLoading` to show a branded spinner instead of a
+ * flash of the login screen while this check is in flight.
+ */
+export default function App() {
+  const token = useAuthStore((s) => s.token);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setLoading = useAuthStore((s) => s.setLoading);
+  const clearSession = useAuthStore((s) => s.clearSession);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const me = await authApi.me();
+        if (!cancelled) {
+          setUser(me);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          clearSession();
+        }
+      }
+    }
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally only runs once on mount — token changes after this point
+    // (login/logout) are handled directly by their respective flows, not by re-running bootstrap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    <BrowserRouter>
+      <AppRoutes />
+      <ToastContainer />
+    </BrowserRouter>
+  );
 }
-
-export default App
