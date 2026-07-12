@@ -1,11 +1,6 @@
 import axios from "axios";
 import { getAuthState, useAuthStore } from "../store/authStore";
 
-/**
- * Base URL resolves from .env (VITE_API_BASE_URL). Falls back to the
- * README's documented default so the app still works out of the box
- * in local dev if .env hasn't been created yet.
- */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 export const api = axios.create({
