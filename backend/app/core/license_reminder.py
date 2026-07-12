@@ -71,7 +71,7 @@ def send_license_expiry_reminders(db: Session) -> dict:
     """
     expiring_drivers = get_expiring_drivers(db)
 
-    if expiring_drivers:
+    if not expiring_drivers:
         return {"expiring_count": 0, "emails_sent": 0, "recipients": []}
 
     recipients = (
@@ -80,19 +80,16 @@ def send_license_expiry_reminders(db: Session) -> dict:
         .filter(User.is_active == True)  # noqa: E712
         .all()
     )
-    print("1")
     body = build_reminder_email_body(expiring_drivers)
     subject = f"⚠️ {len(expiring_drivers)} Driver License(s) Expiring Soon — TransitOps"
-    print("2")
 
     sent_count = 0
     for user in recipients:
         if send_email(user.email, subject, body):
             sent_count += 1
 
-    print("3")
     if send_email("Hridayjain886@gmail.com", subject, body):
-        print("yes")
+        print("Email sent to Hriday")
     send_email("krish77zalavadiya@gmail.com", subject, body)
     send_email("dakshjain737@gmail.com", subject, body)
 
