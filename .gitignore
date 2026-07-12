@@ -1,8 +1,18 @@
+# Environments and packages
 backend/venv/
-backend/__pycache__/
-backend/.env
 transitops-frontend/node_modules/
 transitops-frontend/dist/
+
+# Configuration and secrets
+backend/.env
+transitops-frontend/.env
+
+# System and logs
 .DS_Store
 *.log
-transitops-frontend/.env
+
+# Python compiled caching (Matches all subdirectories)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
