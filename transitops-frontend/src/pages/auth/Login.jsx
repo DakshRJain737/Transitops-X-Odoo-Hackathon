@@ -181,7 +181,7 @@ export default function Login() {
           to="/register"
           className="text-accent-400 hover:text-accent-300 font-medium transition-colors"
         >
-          Contact your administrator
+          Create an account
         </Link>
       </p>
     </motion.div>
