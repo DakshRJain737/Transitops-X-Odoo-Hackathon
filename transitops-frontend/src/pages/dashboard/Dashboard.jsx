@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Truck,
@@ -190,6 +191,7 @@ function RowSkeleton() {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [data, setData] = useState(() => normalizeDashboard());
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
@@ -395,16 +397,36 @@ export default function Dashboard() {
 
         <Card className="flex flex-col gap-3 p-5">
           <h3 className="text-sm font-semibold text-white/90">Quick Actions</h3>
-          <Button variant="secondary" icon={PlusCircle} className="justify-start">
+          <Button
+            variant="secondary"
+            icon={PlusCircle}
+            className="justify-start"
+            onClick={() => navigate('/vehicles')}
+          >
             Register Vehicle
           </Button>
-          <Button variant="secondary" icon={UserPlus} className="justify-start">
+          <Button
+            variant="secondary"
+            icon={UserPlus}
+            className="justify-start"
+            onClick={() => navigate('/drivers')}
+          >
             Add Driver
           </Button>
-          <Button variant="secondary" icon={ClipboardList} className="justify-start">
+          <Button
+            variant="secondary"
+            icon={ClipboardList}
+            className="justify-start"
+            onClick={() => navigate('/trips')}
+          >
             Dispatch Trip
           </Button>
-          <Button variant="secondary" icon={Gauge} className="justify-start">
+          <Button
+            variant="secondary"
+            icon={Gauge}
+            className="justify-start"
+            onClick={() => navigate('/reports')}
+          >
             View Reports
           </Button>
         </Card>

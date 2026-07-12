@@ -14,7 +14,8 @@ import { ROLES } from "../constants/roles";
  * Vite just won't have resolved the module yet during dev if the file is missing —
  * pages must exist before their route is visited).
  */
-const Login = lazy(() => import("../pages/auth/Login"));
+const Login    = lazy(() => import("../pages/auth/Login"));
+const Register = lazy(() => import("../pages/auth/Register"));
 const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
 const VehiclesList = lazy(() => import("../pages/vehicles/VehiclesList"));
 const VehicleDetails = lazy(() => import("../pages/vehicles/VehicleDetails"));
@@ -51,6 +52,14 @@ export function AppRoutes() {
           element={
             <AuthLayout>
               <Login />
+            </AuthLayout>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <AuthLayout>
+              <Register />
             </AuthLayout>
           }
         />
