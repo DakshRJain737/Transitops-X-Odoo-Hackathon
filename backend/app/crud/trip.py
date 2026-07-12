@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.trip import Trip, TripStatus
@@ -19,6 +20,9 @@ def get_trips(
     status: Optional[TripStatus] = None,
     vehicle_id: Optional[str] = None,
     driver_id: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
     skip: int = 0,
     limit: int = 100,
 ) -> List[Trip]:
@@ -29,7 +33,17 @@ def get_trips(
         query = query.filter(Trip.vehicle_id == vehicle_id)
     if driver_id:
         query = query.filter(Trip.driver_id == driver_id)
-    return query.order_by(Trip.created_at.desc()).offset(skip).limit(limit).all()
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        query = query.filter(or_(Trip.source.ilike(search_term), Trip.destination.ilike(search_term)))
+    sort_column = getattr(Trip, sort_by, None)
+    if sort_column is None:
+        sort_column = Trip.created_at
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    return query.offset(skip).limit(limit).all()
 
 
 def create_trip(db: Session, trip_in: TripCreate) -> Trip:

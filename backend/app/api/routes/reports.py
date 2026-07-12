@@ -2,12 +2,12 @@ import csv
 import io
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.vehicle import Vehicle, VehicleStatus
+from app.models.vehicle import Vehicle, VehicleStatus, VehicleType
 from app.models.driver import Driver, DriverStatus
 from app.models.trip import Trip, TripStatus
 from app.models.maintenance import MaintenanceLog, MaintenanceStatus
@@ -19,16 +19,57 @@ router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
 
 @router.get("/dashboard")
-def dashboard_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    total_vehicles = db.query(Vehicle).count()
-    active_vehicles = db.query(Vehicle).filter(Vehicle.status != VehicleStatus.RETIRED).count()
-    available_vehicles = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.AVAILABLE).count()
-    in_maintenance = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.IN_SHOP).count()
+def dashboard_kpis(
+    vehicle_type: Optional[VehicleType] = Query(None),
+    status_filter: Optional[VehicleStatus] = Query(None),
+    region: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    vehicles_query = db.query(Vehicle)
+    if vehicle_type:
+        vehicles_query = vehicles_query.filter(Vehicle.type == vehicle_type)
+    if status_filter:
+        vehicles_query = vehicles_query.filter(Vehicle.status == status_filter)
+    if region:
+        vehicles_query = vehicles_query.filter(Vehicle.region == region)
 
-    active_trips = db.query(Trip).filter(Trip.status == TripStatus.DISPATCHED).count()
-    pending_trips = db.query(Trip).filter(Trip.status == TripStatus.DRAFT).count()
+    vehicles = vehicles_query.all()
+    vehicle_ids = [vehicle.id for vehicle in vehicles]
 
-    drivers_on_duty = db.query(Driver).filter(Driver.status == DriverStatus.ON_TRIP).count()
+    total_vehicles = len(vehicles)
+    active_vehicles = sum(1 for vehicle in vehicles if vehicle.status != VehicleStatus.RETIRED)
+    available_vehicles = sum(1 for vehicle in vehicles if vehicle.status == VehicleStatus.AVAILABLE)
+    in_maintenance = sum(1 for vehicle in vehicles if vehicle.status == VehicleStatus.IN_SHOP)
+
+    active_trips = (
+        db.query(Trip)
+        .filter(Trip.status == TripStatus.DISPATCHED)
+        .filter(Trip.vehicle_id.in_(vehicle_ids))
+        .count()
+        if vehicle_ids
+        else 0
+    )
+    pending_trips = (
+        db.query(Trip)
+        .filter(Trip.status == TripStatus.DRAFT)
+        .filter(Trip.vehicle_id.in_(vehicle_ids))
+        .count()
+        if vehicle_ids
+        else 0
+    )
+
+    drivers_on_duty = 0
+    if vehicle_ids:
+        assigned_driver_ids = {
+            trip.driver_id for trip in db.query(Trip).filter(Trip.vehicle_id.in_(vehicle_ids)).all()
+        }
+        drivers_on_duty = (
+            db.query(Driver)
+            .filter(Driver.id.in_(assigned_driver_ids))
+            .filter(Driver.status == DriverStatus.ON_TRIP)
+            .count()
+        )
 
     fleet_utilization = round((active_trips / total_vehicles) * 100, 2) if total_vehicles else 0.0
 

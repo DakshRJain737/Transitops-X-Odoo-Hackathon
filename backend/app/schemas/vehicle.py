@@ -14,6 +14,7 @@ class VehicleBase(BaseModel):
     max_load_capacity: float = Field(..., gt=0)
     acquisition_cost: float = Field(..., ge=0)
     region: Optional[str] = None
+    documents_url: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator("registration_number")
     @classmethod
@@ -34,6 +35,7 @@ class VehicleUpdate(BaseModel):
     acquisition_cost: Optional[float] = Field(default=None, ge=0)
     status: Optional[VehicleStatus] = None
     region: Optional[str] = None
+    documents_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class VehicleOut(VehicleBase):

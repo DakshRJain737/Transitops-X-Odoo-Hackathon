@@ -26,12 +26,15 @@ MANAGE_ROLES = [RoleEnum.FLEET_MANAGER, RoleEnum.SAFETY_OFFICER]
 @router.get("/", response_model=List[DriverOut])
 def list_drivers(
     status_filter: Optional[DriverStatus] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_drivers(db, status=status_filter, skip=skip, limit=limit)
+    return get_drivers(db, status=status_filter, search=search, sort_by=sort_by, order=order, skip=skip, limit=limit)
 
 
 @router.get("/assignable", response_model=List[DriverOut])

@@ -38,6 +38,7 @@ class Vehicle(Base):
 
     status = Column(Enum(VehicleStatus), default=VehicleStatus.AVAILABLE, nullable=False)
     region = Column(String(100), nullable=True)
+    documents_url = Column(String(500), nullable=True)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

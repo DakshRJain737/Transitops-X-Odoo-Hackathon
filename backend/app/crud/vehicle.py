@@ -1,8 +1,9 @@
 from typing import List, Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.vehicle import Vehicle, VehicleStatus
+from app.models.vehicle import Vehicle, VehicleStatus, VehicleType
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
 
 
@@ -17,8 +18,11 @@ def get_vehicle_by_reg_number(db: Session, reg_number: str) -> Optional[Vehicle]
 def get_vehicles(
     db: Session,
     status: Optional[VehicleStatus] = None,
-    vehicle_type: Optional[str] = None,
+    vehicle_type: Optional[VehicleType] = None,
     region: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
     skip: int = 0,
     limit: int = 100,
 ) -> List[Vehicle]:
@@ -29,6 +33,23 @@ def get_vehicles(
         query = query.filter(Vehicle.type == vehicle_type)
     if region:
         query = query.filter(Vehicle.region == region)
+    if search and search.strip():
+        search_term = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                Vehicle.registration_number.ilike(search_term),
+                Vehicle.name.ilike(search_term),
+                Vehicle.model.ilike(search_term),
+                Vehicle.region.ilike(search_term),
+            )
+        )
+    sort_column = getattr(Vehicle, sort_by, None)
+    if sort_column is None:
+        sort_column = Vehicle.created_at
+    if order.lower() == "asc":
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
     return query.offset(skip).limit(limit).all()
 
 
@@ -47,6 +68,27 @@ def create_vehicle(db: Session, vehicle_in: VehicleCreate) -> Vehicle:
 
 def update_vehicle(db: Session, vehicle: Vehicle, vehicle_in: VehicleUpdate) -> Vehicle:
     update_data = vehicle_in.model_dump(exclude_unset=True)
+    from fastapi import HTTPException, status
+    from app.models.trip import Trip, TripStatus
+
+    if "status" in update_data:
+        if update_data["status"] == VehicleStatus.ON_TRIP:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Vehicle status cannot be set to on_trip directly; use the trip dispatch workflow",
+            )
+        if update_data["status"] == VehicleStatus.AVAILABLE:
+            active_trip = (
+                db.query(Trip)
+                .filter(Trip.vehicle_id == vehicle.id, Trip.status == TripStatus.DISPATCHED)
+                .first()
+            )
+            if active_trip:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot set a vehicle to available while a trip is in progress",
+                )
+
     for field, value in update_data.items():
         setattr(vehicle, field, value)
     db.commit()

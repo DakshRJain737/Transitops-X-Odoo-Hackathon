@@ -20,12 +20,25 @@ def list_trips(
     status_filter: Optional[TripStatus] = None,
     vehicle_id: Optional[str] = None,
     driver_id: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: str = "created_at",
+    order: str = "desc",
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_trips(db, status=status_filter, vehicle_id=vehicle_id, driver_id=driver_id, skip=skip, limit=limit)
+    return get_trips(
+        db,
+        status=status_filter,
+        vehicle_id=vehicle_id,
+        driver_id=driver_id,
+        search=search,
+        sort_by=sort_by,
+        order=order,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{trip_id}", response_model=TripOut)
