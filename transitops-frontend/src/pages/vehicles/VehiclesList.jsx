@@ -230,7 +230,7 @@ function VehicleForm({ defaultValues, onSubmit, onCancel, isSubmitting, mode }) 
 
 export default function VehiclesList() {
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['fleet_manager', 'admin']) : true;
+  const canManage = hasRole('fleet_manager', 'admin');
 
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -690,7 +690,7 @@ function ErrorState({ onRetry }) {
 
 export default function TripDispatch() {
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['driver', 'fleet_manager', 'admin']) : true;
+  const canManage = hasRole('driver', 'fleet_manager', 'admin');
 
   const { vehicleMap, driverMap, loaded: entitiesLoaded, refresh: refreshEntities } = useEntityMaps();
 

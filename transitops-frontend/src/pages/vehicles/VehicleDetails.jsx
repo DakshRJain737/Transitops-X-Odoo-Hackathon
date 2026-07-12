@@ -171,7 +171,7 @@ export default function VehicleDetails() {
   const { vehicleId } = useParams();
   const navigate = useNavigate();
   const hasRole = useAuthStore((s) => s.hasRole);
-  const canManage = hasRole ? hasRole(['fleet_manager', 'admin']) : true;
+  const canManage = hasRole('fleet_manager', 'admin');
 
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
