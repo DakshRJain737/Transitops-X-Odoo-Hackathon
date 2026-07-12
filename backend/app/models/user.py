@@ -3,13 +3,12 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, String, Boolean, DateTime, Enum
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.types import String as SQLString
 
 from app.db.base import Base
 
 
 class RoleEnum(str, enum.Enum):
+    ADMIN = "admin"
     FLEET_MANAGER = "fleet_manager"
     DRIVER = "driver"
     SAFETY_OFFICER = "safety_officer"

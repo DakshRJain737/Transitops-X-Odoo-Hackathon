@@ -38,8 +38,13 @@ def get_current_user(
 
 
 def require_roles(allowed_roles: List[RoleEnum]):
-    """Usage: Depends(require_roles([RoleEnum.FLEET_MANAGER]))"""
+    """
+    Admin always passes, regardless of allowed_roles.
+    Usage: Depends(require_roles([RoleEnum.FLEET_MANAGER]))
+    """
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role == RoleEnum.ADMIN:
+            return current_user
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -47,3 +52,12 @@ def require_roles(allowed_roles: List[RoleEnum]):
             )
         return current_user
     return role_checker
+
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != RoleEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required",
+        )
+    return current_user
