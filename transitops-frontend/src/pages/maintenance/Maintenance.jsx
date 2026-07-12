@@ -500,7 +500,7 @@ function MaintenanceFormModal({ isOpen, onClose, onSuccess, vehicles, editRecord
               <Select
                 label="Status"
                 options={STATUS_UPDATE_OPTIONS}
-                hint="Use "Close Job" to fully close a record."
+                hint="Use &quot;Close Job&quot; to fully close a record."
                 error={errors.status?.message}
                 {...register('status')}
               />
@@ -827,7 +827,7 @@ export default function Maintenance() {
   /* ─────────────────────────────── RENDER ─────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-surface-900 p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* ── PAGE HEADER ── */}
       <motion.div

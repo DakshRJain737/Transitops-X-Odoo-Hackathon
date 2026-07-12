@@ -1,6 +1,6 @@
 import api from "./api";
 
-
+/**
  * Filters supported by GET /: status_filter, skip, limit
  */
 export const driversApi = {

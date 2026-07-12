@@ -840,7 +840,7 @@ export default function FuelExpense() {
   /* ─────────────────────── RENDER ─────────────────────── */
 
   return (
-    <div className="min-h-screen bg-surface-900 p-6 space-y-6">
+    <div className="space-y-6">
 
       {/* ── PAGE HEADER ── */}
       <motion.div
