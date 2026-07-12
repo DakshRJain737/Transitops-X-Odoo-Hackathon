@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.base_all_models import Base
 from app.db.session import engine
+from app.api.routes import auth
 
 app = FastAPI(title="TransitOps API")
 
@@ -15,6 +16,8 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+
+app.include_router(auth.router)
 
 
 @app.get("/")
