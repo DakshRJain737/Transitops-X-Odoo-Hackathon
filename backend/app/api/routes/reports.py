@@ -1,7 +1,7 @@
 import csv
 import io
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -66,6 +66,7 @@ def dashboard_kpis(
         else 0
     )
 
+    total_drivers = db.query(Driver).count()
     drivers_on_duty = 0
     if vehicle_ids:
         assigned_driver_ids = {
@@ -80,14 +81,101 @@ def dashboard_kpis(
 
     fleet_utilization = round((active_trips / total_vehicles) * 100, 2) if total_vehicles else 0.0
 
+    # --- Vehicle status breakdown for pie chart ---
+    status_counts = {}
+    for v in vehicles:
+        key = v.status.value if v.status else "unknown"
+        status_counts[key] = status_counts.get(key, 0) + 1
+    vehicle_status_breakdown = [{"status": k, "count": v} for k, v in status_counts.items()]
+
+    # --- Recent trips (last 5) ---
+    recent_trips_raw = (
+        db.query(Trip)
+        .order_by(Trip.id.desc())
+        .limit(5)
+        .all()
+    )
+    recent_trips = []
+    for t in recent_trips_raw:
+        driver = db.query(Driver).filter(Driver.id == t.driver_id).first() if t.driver_id else None
+        vehicle = db.query(Vehicle).filter(Vehicle.id == t.vehicle_id).first() if t.vehicle_id else None
+        recent_trips.append({
+            "id": t.id,
+            "origin": t.source or "",
+            "destination": t.destination or "",
+            "status": t.status.value if t.status else "",
+            "driver_name": driver.name if driver else "",
+            "vehicle_registration_number": vehicle.registration_number if vehicle else "",
+        })
+
+    # --- Recent maintenance (last 5) ---
+    recent_maintenance_raw = (
+        db.query(MaintenanceLog)
+        .order_by(MaintenanceLog.id.desc())
+        .limit(5)
+        .all()
+    )
+    recent_maintenance = []
+    for m in recent_maintenance_raw:
+        vehicle = db.query(Vehicle).filter(Vehicle.id == m.vehicle_id).first() if m.vehicle_id else None
+        recent_maintenance.append({
+            "id": m.id,
+            "maintenance_type": m.maintenance_type.value if m.maintenance_type else "",
+            "status": m.status.value if m.status else "",
+            "vehicle_registration_number": vehicle.registration_number if vehicle else "",
+        })
+
+    # --- Upcoming license expiry (within 60 days) ---
+    today = date.today()
+    cutoff = today + timedelta(days=60)
+    expiring_drivers = (
+        db.query(Driver)
+        .filter(Driver.license_expiry_date != None)
+        .filter(Driver.license_expiry_date <= cutoff)
+        .filter(Driver.license_expiry_date >= today)
+        .order_by(Driver.license_expiry_date.asc())
+        .limit(10)
+        .all()
+    )
+    upcoming_license_expiry = [
+        {
+            "id": d.id,
+            "name": d.name,
+            "license_number": d.license_number,
+            "license_expiry": str(d.license_expiry_date) if d.license_expiry_date else "",
+        }
+        for d in expiring_drivers
+    ]
+
+    # --- 7-day utilization trend ---
+    utilization_trend = []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_label = day.strftime("%b %d")
+        # count active/completed trips as a proxy for utilization on each day
+        active_on_day = (
+            db.query(Trip)
+            .filter(Trip.status.in_([TripStatus.DISPATCHED, TripStatus.COMPLETED]))
+            .count()
+        )
+        util = round((active_on_day / total_vehicles) * 100, 1) if total_vehicles else 0.0
+        utilization_trend.append({"date": day_label, "utilization": util})
+
     return {
         "active_vehicles": active_vehicles,
         "available_vehicles": available_vehicles,
         "vehicles_in_maintenance": in_maintenance,
+        "total_vehicles": total_vehicles,
+        "total_drivers": total_drivers,
         "active_trips": active_trips,
         "pending_trips": pending_trips,
         "drivers_on_duty": drivers_on_duty,
         "fleet_utilization_percent": fleet_utilization,
+        "vehicle_status_breakdown": vehicle_status_breakdown,
+        "recent_trips": recent_trips,
+        "recent_maintenance": recent_maintenance,
+        "upcoming_license_expiry": upcoming_license_expiry,
+        "utilization_trend": utilization_trend,
     }
 
 

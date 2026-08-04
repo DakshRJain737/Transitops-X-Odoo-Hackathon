@@ -64,13 +64,15 @@ function normalizeDashboard(raw = {}) {
   return {
     activeVehicles: raw.active_vehicles ?? raw.activeVehicles ?? 0,
     availableVehicles: raw.available_vehicles ?? raw.availableVehicles ?? 0,
-    inMaintenanceVehicles: raw.in_maintenance_vehicles ?? raw.inMaintenance ?? 0,
+    // backend uses 'vehicles_in_maintenance' (not 'in_maintenance_vehicles')
+    inMaintenanceVehicles: raw.vehicles_in_maintenance ?? raw.in_maintenance_vehicles ?? raw.inMaintenance ?? 0,
     totalVehicles: raw.total_vehicles ?? raw.totalVehicles ?? 0,
     activeTrips: raw.active_trips ?? raw.activeTrips ?? 0,
     pendingTrips: raw.pending_trips ?? raw.pendingTrips ?? 0,
     driversOnDuty: raw.drivers_on_duty ?? raw.driversOnDuty ?? 0,
     totalDrivers: raw.total_drivers ?? raw.totalDrivers ?? 0,
-    fleetUtilization: raw.fleet_utilization ?? raw.fleetUtilization ?? 0,
+    // backend uses 'fleet_utilization_percent' (not 'fleet_utilization')
+    fleetUtilization: raw.fleet_utilization_percent ?? raw.fleet_utilization ?? raw.fleetUtilization ?? 0,
     utilizationTrend:
       raw.utilization_trend ??
       raw.utilizationTrend ??
